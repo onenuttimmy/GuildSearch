@@ -1,20 +1,20 @@
 -- GuildSearch.lua
--- Version: 1.0
--- Features: Default Sort by Level (Low->High), Right-Click Menu (No Target)
+-- Version: 3.0
+-- Features: Search, Sort, Right-Click Menu, Rank Column Added
 
 local MAX_ROWS = 15
 local ROW_HEIGHT = 16
 local searchResults = {}
 
--- CHANGED: Default sort is now Level, Ascending (Low to High)
+-- Default Sort: Level (Low to High)
 local sortCol = "level"
 local sortAsc = true
 
-local selectedName = nil -- Stores the name of the player right-clicked
+local selectedName = nil
 
 -- Main Frame
 local mainFrame = CreateFrame("Frame", "GuildSearchFrame", UIParent)
-mainFrame:SetWidth(400)
+mainFrame:SetWidth(460) -- Widened for Rank column
 mainFrame:SetHeight(360)
 mainFrame:SetPoint("CENTER", UIParent, "CENTER")
 mainFrame:SetBackdrop({
@@ -64,7 +64,7 @@ resetBtn:SetText("Reset")
 -- Scroll Frame
 local scrollFrame = CreateFrame("ScrollFrame", "GuildSearchScrollFrame", mainFrame, "FauxScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 20, -100)
-scrollFrame:SetWidth(335)
+scrollFrame:SetWidth(400)
 scrollFrame:SetHeight(MAX_ROWS * ROW_HEIGHT)
 
 -- List Background
@@ -86,39 +86,33 @@ local function GuildSearch_InitMenu()
 
     local info = {}
     
-    -- Title (Player Name)
     info.text = selectedName
     info.isTitle = 1
     UIDropDownMenu_AddButton(info)
 
-    -- Whisper
     info = {}
     info.text = "Whisper"
     info.func = function() ChatFrame_OpenChat("/w " .. selectedName .. " ") end
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 
-    -- Invite
     info = {}
     info.text = "Invite"
     info.func = function() InviteByName(selectedName) end
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 
-    -- Add Friend
     info = {}
     info.text = "Add Friend"
     info.func = function() AddFriend(selectedName) end
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 
-    -- Separator
     info = {} 
     info.disabled = 1
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 
-    -- GM: Promote
     if CanGuildPromote() then
         info = {}
         info.text = "Promote"
@@ -127,7 +121,6 @@ local function GuildSearch_InitMenu()
         UIDropDownMenu_AddButton(info)
     end
 
-    -- GM: Demote
     if CanGuildDemote() then
         info = {}
         info.text = "Demote"
@@ -136,7 +129,6 @@ local function GuildSearch_InitMenu()
         UIDropDownMenu_AddButton(info)
     end
 
-    -- GM: Kick
     if CanGuildRemove() then
         info = {}
         info.text = "|cffff0000Guild Kick|r"
@@ -156,16 +148,14 @@ local function GuildSearch_InitMenu()
         UIDropDownMenu_AddButton(info)
     end
 
-    -- Cancel
     info = {}
     info.text = "Cancel"
     info.func = function() end
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 end
--- ---------------------------
 
--- Header Buttons
+-- --- HEADER BUTTONS ---
 local function CreateHeader(text, width, key, xOffset)
     local btn = CreateFrame("Button", nil, mainFrame)
     btn:SetWidth(width)
@@ -188,18 +178,20 @@ local function CreateHeader(text, width, key, xOffset)
     return btn
 end
 
+-- Layout Configuration
 local colLvl = CreateHeader("Lvl", 30, "level", 0)
-local colClass = CreateHeader("Class", 80, "class", 35)
-local colName = CreateHeader("Name", 100, "name", 115)
-local colZone = CreateHeader("Zone", 120, "zone", 215)
+local colClass = CreateHeader("Class", 70, "class", 35)
+local colName = CreateHeader("Name", 90, "name", 105)
+local colRank = CreateHeader("Rank", 80, "rankIndex", 195) -- Sort by Rank Index (GM=0)
+local colZone = CreateHeader("Zone", 110, "zone", 280)
 
--- Data Rows
+-- --- DATA ROWS ---
 local rows = {}
 local function CreateRow(i)
     local row = CreateFrame("Button", nil, mainFrame)
-    row:SetWidth(350)
+    row:SetWidth(420)
     row:SetHeight(ROW_HEIGHT)
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp") -- Allow Right Click
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
     local function CreateCell(w, align)
         local t = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -212,26 +204,26 @@ local function CreateRow(i)
     row.lvl = CreateCell(30, "LEFT")
     row.lvl:SetPoint("LEFT", row, "LEFT", 0, 0)
 
-    row.class = CreateCell(80, "LEFT")
+    row.class = CreateCell(70, "LEFT")
     row.class:SetPoint("LEFT", row.lvl, "RIGHT", 5, 0)
 
-    row.name = CreateCell(100, "LEFT")
+    row.name = CreateCell(90, "LEFT")
     row.name:SetPoint("LEFT", row.class, "RIGHT", 0, 0)
 
-    row.zone = CreateCell(120, "LEFT")
-    row.zone:SetPoint("LEFT", row.name, "RIGHT", 0, 0)
+    row.rank = CreateCell(80, "LEFT")
+    row.rank:SetPoint("LEFT", row.name, "RIGHT", 0, 0)
 
-    -- CLICK HANDLER
+    row.zone = CreateCell(110, "LEFT")
+    row.zone:SetPoint("LEFT", row.rank, "RIGHT", 5, 0)
+
     row:SetScript("OnClick", function()
         if not this.playerName then return end
         
         if (arg1 == "RightButton") then
-            -- RIGHT CLICK: Open Menu
             selectedName = this.playerName
             UIDropDownMenu_Initialize(dropDown, GuildSearch_InitMenu, "MENU")
             ToggleDropDownMenu(1, nil, dropDown, "cursor", 0, 0)
         else
-            -- LEFT CLICK: Standard behavior
             if (IsShiftKeyDown()) then
                 SendWho("n-"..this.playerName)
             else
@@ -244,6 +236,7 @@ local function CreateRow(i)
         this.lvl:SetTextColor(1, 1, 0)
         this.class:SetTextColor(1, 1, 0)
         this.name:SetTextColor(1, 1, 0)
+        this.rank:SetTextColor(1, 1, 0)
         this.zone:SetTextColor(1, 1, 0)
     end)
     row:SetScript("OnLeave", function() 
@@ -251,6 +244,7 @@ local function CreateRow(i)
         this.lvl:SetTextColor(c[1], c[2], c[3])
         this.class:SetTextColor(c[1], c[2], c[3])
         this.name:SetTextColor(c[1], c[2], c[3])
+        this.rank:SetTextColor(c[1], c[2], c[3])
         this.zone:SetTextColor(c[1], c[2], c[3])
     end)
 
@@ -275,13 +269,15 @@ end
 local function SortData()
     table.sort(searchResults, function(a, b)
         local v1, v2 = a[sortCol], b[sortCol]
-        if not v1 then v1 = "" end
-        if not v2 then v2 = "" end
         
-        if sortCol == "level" then
+        if sortCol == "level" or sortCol == "rankIndex" then
+            -- Numeric Sort
             v1 = tonumber(v1) or 0
             v2 = tonumber(v2) or 0
         else
+            -- String Sort
+            v1 = tostring(v1 or "")
+            v2 = tostring(v2 or "")
             v1 = string.lower(v1)
             v2 = string.lower(v2)
         end
@@ -306,6 +302,7 @@ function GuildSearch_UpdateList()
         else
             if (SafeSearch(name, query)) then match = true end
             if (SafeSearch(class, query)) then match = true end
+            if (SafeSearch(rank, query)) then match = true end -- Allow search by rank name
             if (SafeSearch(zone, query)) then match = true end
             if (SafeSearch(tostring(level), query)) then match = true end
         end
@@ -317,6 +314,8 @@ function GuildSearch_UpdateList()
                 name = name,
                 level = level,
                 class = class,
+                rank = rank,
+                rankIndex = rankIndex,
                 zone = zone or "Offline",
                 online = online,
                 status = status
@@ -339,12 +338,15 @@ function GuildSearch_UpdateList()
                 rows[i].lvl:SetText(data.level)
                 rows[i].class:SetText(data.class)
                 rows[i].name:SetText(data.name)
+                rows[i].rank:SetText(data.rank)
                 rows[i].zone:SetText(data.zone)
 
-                rows[i].lvl:SetTextColor(data.online and 1 or 0.5, data.online and 1 or 0.5, data.online and 1 or 0.5)
-                rows[i].class:SetTextColor(data.online and 1 or 0.5, data.online and 1 or 0.5, data.online and 1 or 0.5)
-                rows[i].name:SetTextColor(data.online and 1 or 0.5, data.online and 1 or 0.5, data.online and 1 or 0.5)
-                rows[i].zone:SetTextColor(data.online and 1 or 0.5, data.online and 1 or 0.5, data.online and 1 or 0.5)
+                local c = data.online and 1 or 0.5
+                rows[i].lvl:SetTextColor(c, c, c)
+                rows[i].class:SetTextColor(c, c, c)
+                rows[i].name:SetTextColor(c, c, c)
+                rows[i].rank:SetTextColor(c, c, c)
+                rows[i].zone:SetTextColor(c, c, c)
 
                 rows[i].playerName = data.name
                 rows[i].isOnline = data.online
@@ -358,11 +360,10 @@ function GuildSearch_UpdateList()
     end
 end
 
--- CHANGED: Reset now sets sortCol to "level"
 resetBtn:SetScript("OnClick", function()
     searchBox:SetText("")
     searchBox:ClearFocus()
-    sortCol = "level" 
+    sortCol = "level"
     sortAsc = true
     GuildSearch_UpdateList()
 end)
@@ -394,4 +395,4 @@ SlashCmdList["GUILDSEARCH"] = function()
     if mainFrame:IsVisible() then mainFrame:Hide() else mainFrame:Show() end
 end
 
-DEFAULT_CHAT_FRAME:AddMessage("GuildSearch 1.0 Loaded.", 1, 1, 0)
+DEFAULT_CHAT_FRAME:AddMessage("GuildSearch 3.0 Loaded (With Ranks). Type /gs to start.", 1, 1, 0)

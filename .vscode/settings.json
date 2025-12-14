@@ -1,0 +1,15 @@
+{
+    "Lua.diagnostics.globals": [
+        "SlashCmdList",
+        "DEFAULT_CHAT_FRAME",
+        "UIDropDownMenu_AddButton",
+        "FauxScrollFrame_Update",
+        "FauxScrollFrame_OnVerticalScroll",
+        "ChatFrame_OpenChat",
+        "FauxScrollFrame_GetOffset",
+        "StaticPopupDialogs",
+        "StaticPopup_Show",
+        "UIDropDownMenu_Initialize",
+        "ToggleDropDownMenu"
+    ]
+}
