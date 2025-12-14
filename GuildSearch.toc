@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: GuildSearch
+## Notes: A simple window to search guild members and guildmanagement.
+## Author: Waarior
+## Version: 1.0
+
+GuildSearch.lua
