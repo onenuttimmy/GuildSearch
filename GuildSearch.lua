@@ -1,12 +1,11 @@
 -- GuildSearch.lua
--- Version: 3.0
--- Features: Search, Sort, Right-Click Menu, Rank Column Added
+-- Version: 3.1
+-- Fixed: GuildPromote and GuildDemote logic for 1.12 API compatibility
 
 local MAX_ROWS = 15
 local ROW_HEIGHT = 16
 local searchResults = {}
 
--- Default Sort: Level (Low to High)
 local sortCol = "level"
 local sortAsc = true
 
@@ -14,7 +13,7 @@ local selectedName = nil
 
 -- Main Frame
 local mainFrame = CreateFrame("Frame", "GuildSearchFrame", UIParent)
-mainFrame:SetWidth(460) -- Widened for Rank column
+mainFrame:SetWidth(460)
 mainFrame:SetHeight(360)
 mainFrame:SetPoint("CENTER", UIParent, "CENTER")
 mainFrame:SetBackdrop({
@@ -80,6 +79,18 @@ listBg:SetBackdrop({
 listBg:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
 listBg:SetBackdropColor(0, 0, 0, 0.5)
 
+-- --- HELPER FUNCTION: Get Index by Name ---
+local function GetGuildMemberIndex(targetName)
+    local name
+    for i=1, GetNumGuildMembers() do
+        name = GetGuildRosterInfo(i)
+        if name and string.lower(name) == string.lower(targetName) then
+            return i
+        end
+    end
+    return nil
+end
+
 -- --- DROPDOWN MENU LOGIC ---
 local function GuildSearch_InitMenu()
     if not selectedName then return end
@@ -113,22 +124,37 @@ local function GuildSearch_InitMenu()
     info.notCheckable = 1
     UIDropDownMenu_AddButton(info)
 
+    -- GM: Promote
     if CanGuildPromote() then
         info = {}
         info.text = "Promote"
-        info.func = function() GuildPromote(selectedName) end
+        info.func = function() 
+            local idx = GetGuildMemberIndex(selectedName)
+            if idx then
+                SetGuildRosterSelection(idx)
+                GuildPromote()
+            end
+        end
         info.notCheckable = 1
         UIDropDownMenu_AddButton(info)
     end
 
+    -- GM: Demote
     if CanGuildDemote() then
         info = {}
         info.text = "Demote"
-        info.func = function() GuildDemote(selectedName) end
+        info.func = function() 
+            local idx = GetGuildMemberIndex(selectedName)
+            if idx then
+                SetGuildRosterSelection(idx)
+                GuildDemote()
+            end
+        end
         info.notCheckable = 1
         UIDropDownMenu_AddButton(info)
     end
 
+    -- GM: Kick
     if CanGuildRemove() then
         info = {}
         info.text = "|cffff0000Guild Kick|r"
@@ -182,7 +208,7 @@ end
 local colLvl = CreateHeader("Lvl", 30, "level", 0)
 local colClass = CreateHeader("Class", 70, "class", 35)
 local colName = CreateHeader("Name", 90, "name", 105)
-local colRank = CreateHeader("Rank", 80, "rankIndex", 195) -- Sort by Rank Index (GM=0)
+local colRank = CreateHeader("Rank", 80, "rankIndex", 195) 
 local colZone = CreateHeader("Zone", 110, "zone", 280)
 
 -- --- DATA ROWS ---
@@ -271,11 +297,9 @@ local function SortData()
         local v1, v2 = a[sortCol], b[sortCol]
         
         if sortCol == "level" or sortCol == "rankIndex" then
-            -- Numeric Sort
             v1 = tonumber(v1) or 0
             v2 = tonumber(v2) or 0
         else
-            -- String Sort
             v1 = tostring(v1 or "")
             v2 = tostring(v2 or "")
             v1 = string.lower(v1)
@@ -302,7 +326,7 @@ function GuildSearch_UpdateList()
         else
             if (SafeSearch(name, query)) then match = true end
             if (SafeSearch(class, query)) then match = true end
-            if (SafeSearch(rank, query)) then match = true end -- Allow search by rank name
+            if (SafeSearch(rank, query)) then match = true end 
             if (SafeSearch(zone, query)) then match = true end
             if (SafeSearch(tostring(level), query)) then match = true end
         end
@@ -395,4 +419,4 @@ SlashCmdList["GUILDSEARCH"] = function()
     if mainFrame:IsVisible() then mainFrame:Hide() else mainFrame:Show() end
 end
 
-DEFAULT_CHAT_FRAME:AddMessage("GuildSearch 3.0 Loaded (With Ranks). Type /gs to start.", 1, 1, 0)
+DEFAULT_CHAT_FRAME:AddMessage("GuildSearch 3.1 Loaded. GM Tools Fixed.", 1, 1, 0)
